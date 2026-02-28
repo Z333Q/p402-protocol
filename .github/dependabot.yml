@@ -1,0 +1,45 @@
+version: 2
+updates:
+  # Scan GitHub Actions for updates
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    commit-message:
+      prefix: "ci"
+    # Auto-approve only patch updates on actions (minor/major require human review)
+    groups:
+      actions-minor:
+        patterns: ["actions/*"]
+        update-types: ["minor", "patch"]
+
+  # Scan SDK dependencies
+  - package-ecosystem: "npm"
+    directory: "/packages/sdk"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    commit-message:
+      prefix: "deps(sdk)"
+    # Group devDependency patch updates to reduce noise
+    groups:
+      sdk-dev-patch:
+        dependency-type: "development"
+        update-types: ["patch"]
+
+  # Scan CLI dependencies
+  - package-ecosystem: "npm"
+    directory: "/packages/cli"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    commit-message:
+      prefix: "deps(cli)"
+    groups:
+      cli-prod-patch:
+        dependency-type: "production"
+        update-types: ["patch"]
+      cli-dev-patch:
+        dependency-type: "development"
+        update-types: ["patch"]

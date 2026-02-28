@@ -1,0 +1,18 @@
+# CODEOWNERS — every PR touching these paths requires review from @Z333Q
+# Docs: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Everything by default
+*                           @Z333Q
+
+# Publish workflows — extra gate: only Z333Q can approve changes to release pipelines
+.github/workflows/          @Z333Q
+
+# Package manifests — version bumps and dependency changes require explicit review
+packages/sdk/package.json   @Z333Q
+packages/cli/package.json   @Z333Q
+package.json                @Z333Q
+package-lock.json           @Z333Q
+
+# SDK source — must be reviewed before any npm publish
+packages/sdk/src/           @Z333Q
+packages/cli/src/           @Z333Q

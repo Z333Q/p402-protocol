@@ -5,26 +5,35 @@ on:
     tags:
       - 'sdk/v*'
 
+# Minimal permissions: read source + write OIDC token for npm provenance
+permissions:
+  contents: read
+  id-token: write
+
 jobs:
   publish:
     name: Build and publish SDK
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
+    # Only run from the canonical repo — blocks forks from triggering publishes
+    if: github.repository == 'Z333Q/p402-protocol'
+    environment: npm-publish  # Requires environment approval in GitHub settings
     defaults:
       run:
         working-directory: packages/sdk
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@1d0ff469b7ec7b3cb9d8673fde0c81c44821de2a # v4.2.0
         with:
           node-version: '20'
           registry-url: 'https://registry.npmjs.org'
           cache: 'npm'
 
+      # Reproducible install — fails if lockfile is out of sync
       - run: npm ci
+
+      # Fail on high/critical severity vulnerabilities before publishing
+      - run: npm audit --audit-level=high
 
       - name: Type-check
         run: npm run typecheck
@@ -32,6 +41,8 @@ jobs:
       - name: Build
         run: npm run build
 
+      # --provenance: generates SLSA Level 3 build attestation linked to this commit
+      # --access public: required for scoped packages (@p402/sdk)
       - name: Publish to npm
         run: npm publish --provenance --access public
         env:
