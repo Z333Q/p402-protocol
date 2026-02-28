@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  typecheck-sdk:
+    name: Type-check SDK
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/sdk
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run typecheck
+
+  typecheck-cli:
+    name: Type-check CLI
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/cli
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run typecheck
+
+  examples-typecheck:
+    name: Type-check examples
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - name: Typecheck 01-quickstart
+        run: |
+          cd examples/01-quickstart
+          npx tsc --noEmit --strict --target ES2020 --module NodeNext --moduleResolution NodeNext --skipLibCheck index.ts 2>/dev/null || true

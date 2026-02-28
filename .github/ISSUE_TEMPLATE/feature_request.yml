@@ -1,0 +1,59 @@
+name: Feature Request
+description: Propose a new feature for @p402/sdk or @p402/cli
+labels: ["enhancement", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the idea! Please describe what you need and why.
+
+  - type: dropdown
+    id: package
+    attributes:
+      label: Package
+      options:
+        - "@p402/sdk"
+        - "@p402/cli"
+        - "Both"
+        - "Protocol / API"
+    validations:
+      required: true
+
+  - type: textarea
+    id: use-case
+    attributes:
+      label: Use Case
+      description: What problem are you trying to solve? Why is this important?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed-api
+    attributes:
+      label: Proposed API Shape
+      description: TypeScript interface, CLI command syntax, or pseudocode
+      render: typescript
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options:
+        - "Nice to have"
+        - "Important for my use case"
+        - "Blocking my adoption"
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: What workarounds have you tried? What other approaches could work?
+
+  - type: checkboxes
+    id: contribution
+    attributes:
+      label: Contribution
+      options:
+        - label: I'm willing to submit a PR for this feature

@@ -1,0 +1,790 @@
+openapi: 3.1.0
+info:
+  title: P402 Router APIs
+  version: 1.1.0
+  description: Router APIs for x402 payment planning and settlement.
+servers:
+  - url: https://p402.io
+paths:
+  /api/v1/router/plan:
+    post:
+      operationId: planPayment
+      summary: Get payment plan and policy decision
+      description: |
+        Evaluates a payment request against policies and routes it to the best facilitator.
+        Returns a decision (allow/deny) and a set of candidate facilitators.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PlanRequest'
+      responses:
+        '200':
+          description: Success or denied (check `allow` field)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlanResponse'
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '500':
+          description: Internal error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /api/v1/facilitator/supported:
+    get:
+      operationId: getFacilitatorSupported
+      summary: Get supported schemes and networks
+      description: |
+        Returns the payment schemes, signer addresses, and protocol extensions supported
+        by this facilitator node. Compliant with the x402 facilitator discovery spec.
+      responses:
+        '200':
+          description: Supported schemes and capabilities
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SupportedResponse'
+        '500':
+          description: Internal error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /api/v1/facilitator/verify:
+    post:
+      operationId: verifyPayment
+      summary: Verify an x402 payment authorization
+      description: |
+        Verifies an EIP-3009 payment authorization without executing it.
+        Accepts the x402 wire format (paymentPayload + paymentRequirements).
+        Returns { isValid, payer } on success or { isValid: false, invalidReason } on failure.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/X402VerifyRequest'
+      responses:
+        '200':
+          description: Verification result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/X402VerifyResponse'
+        '400':
+          description: Malformed request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /api/v1/facilitator/settle:
+    post:
+      operationId: settleViaFacilitator
+      summary: Execute a gasless x402 settlement
+      description: |
+        Executes an on-chain EIP-3009 transferWithAuthorization. The facilitator pays gas fees.
+        Accepts the x402 wire format (paymentPayload + paymentRequirements).
+        Returns { success, transaction, network, payer } on success.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/X402SettleRequest'
+      responses:
+        '200':
+          description: Settlement result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/X402SettleResponse'
+        '400':
+          description: Invalid authorization or verification failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: Replay detected (authorization already used)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '500':
+          description: Internal error or facilitator wallet not configured
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /api/v2/chat/completions:
+    post:
+      operationId: chatCompletions
+      summary: OpenAI-compatible chat completions with P402 routing
+      description: |
+        Drop-in replacement for OpenAI's /v1/chat/completions endpoint.
+        Supports multi-provider routing, semantic caching, and autonomous cost optimization.
+        Pass a `p402` extension object to control routing behavior.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/V2ChatRequest'
+      responses:
+        '200':
+          description: OpenAI-compatible response with p402_metadata
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/V2ChatResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: Unauthorized (missing or invalid API key)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '500':
+          description: Internal error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /api/a2a:
+    post:
+      operationId: a2aJsonRpc
+      summary: Agent-to-Agent JSON-RPC 2.0 endpoint
+      description: |
+        Handles A2A protocol methods over JSON-RPC 2.0. Supported methods:
+        - `message/send` — Send a message to an agent and receive a task response.
+        - `x402/payment-submitted` — Submit cryptographic proof of x402 payment (exact, onchain, or receipt scheme).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/JsonRpcRequest'
+      responses:
+        '200':
+          description: JSON-RPC 2.0 response (check for `error` field)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JsonRpcResponse'
+
+  /api/v1/router/settle:
+    post:
+      operationId: settlePayment
+      summary: Verify and settle on-chain payment
+      description: |
+        Verifies a transaction hash on-chain, checks for replays, and records the settlement.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SettleRequest'
+      responses:
+        '200':
+          description: Settled successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SettleResponse'
+        '400':
+          description: Invalid input, verification failed, or unsupported asset
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/ApiError'
+                  - $ref: '#/components/schemas/ValidationError'
+        '409':
+          description: Replay detected (transaction already settled)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '500':
+          description: Internal error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+components:
+  schemas:
+    PlanRequest:
+      type: object
+      required: [policyId, routeId, payment]
+      properties:
+        policyId:
+          type: string
+          description: "ID of the policy to evaluate (or 'default')"
+        routeId:
+          type: string
+          description: "ID of the route being accessed"
+        payment:
+          type: object
+          required: [network, scheme, amount, asset]
+          properties:
+            network:
+              type: string
+              description: "CAIP-2 network identifier"
+              examples: ["eip155:8453"]
+            scheme:
+              type: string
+              description: "x402 scheme"
+              examples: ["exact"]
+            amount:
+              type: string
+              description: "Decimal string amount"
+              examples: ["10.00"]
+            asset:
+              type: string
+              description: "Asset symbol or address"
+              examples: ["USDC"]
+            legacyXPayment:
+              type: boolean
+              description: "True if request used legacy X-PAYMENT header"
+        buyer:
+          type: object
+          properties:
+            buyerId:
+              type: string
+
+    PlanResponse:
+      type: object
+      required: [decisionId, allow, policy, candidates, recommendedAcceptIndex]
+      properties:
+        decisionId:
+          type: string
+          format: uuid
+        allow:
+          type: boolean
+        policy:
+          allOf:
+            - type: object
+              required: [policyId, allow, reasons, appliedOverrides]
+              properties:
+                policyId:
+                  type: string
+                allow:
+                  type: boolean
+                reasons:
+                  type: array
+                  items:
+                    type: string
+                appliedOverrides:
+                  type: array
+                  items:
+                    type: string
+            - $ref: '#/components/schemas/PolicyEvalResultOptional'
+        candidates:
+          type: array
+          items:
+            $ref: '#/components/schemas/FacilitatorCandidate'
+        recommendedAcceptIndex:
+          type: integer
+          minimum: 0
+
+    PolicyEvalResultOptional:
+      type: object
+      properties:
+        schemaVersion:
+          type: string
+          examples: ["1.0.0"]
+        deny:
+          $ref: '#/components/schemas/PolicyDeny'
+        decisionTrace:
+          $ref: '#/components/schemas/DecisionTrace'
+
+    PolicyDeny:
+      type: object
+      required: [code, retryable]
+      properties:
+        code:
+          type: string
+          examples: ["X402_LEGACY_HEADER_X_PAYMENT"]
+        retryable:
+          type: boolean
+        detail:
+          type: string
+
+    DecisionTrace:
+      type: object
+      properties:
+        schemaVersion:
+          type: string
+          examples: ["1.0.0"]
+        decisionId:
+          type: string
+          format: uuid
+        steps:
+          type: array
+          items:
+            type: object
+            properties:
+              t:
+                type: string
+                format: date-time
+              kind:
+                type: string
+              status:
+                type: string
+              meta:
+                type: object
+                additionalProperties: true
+
+    FacilitatorCandidate:
+      type: object
+      required: [facilitatorId, score, supported, health]
+      properties:
+        facilitatorId:
+          type: string
+        score:
+          type: integer
+        supported:
+          type: boolean
+        health:
+          $ref: '#/components/schemas/FacilitatorHealth'
+
+    FacilitatorHealth:
+      type: object
+      required: [status, p95VerifyMs, p95SettleMs, successRate]
+      properties:
+        status:
+          type: string
+          enum: [healthy, degraded, down]
+        p95VerifyMs:
+          type: integer
+        p95SettleMs:
+          type: integer
+        successRate:
+          type: number
+          minimum: 0
+          maximum: 1
+
+    SettleRequest:
+      type: object
+      description: |
+        V1 router settle request. Either `txHash` (onchain scheme) or `authorization`
+        (exact/EIP-3009 scheme) must be provided, but not both.
+      required: [amount, asset]
+      properties:
+        tenantId:
+          type: string
+          format: uuid
+        decisionId:
+          type: string
+        txHash:
+          type: string
+          pattern: '^0x[a-fA-F0-9]{64}$'
+          description: 'On-chain transaction hash (onchain scheme only)'
+        authorization:
+          $ref: '#/components/schemas/EIP3009Authorization'
+          description: 'EIP-3009 authorization object (exact scheme only)'
+        amount:
+          type: string
+          pattern: '^\\d*\\.?\\d+$'
+        asset:
+          type: string
+          minLength: 2
+          maxLength: 10
+
+    SettleResponse:
+      type: object
+      required: [settled, facilitatorId, receipt]
+      properties:
+        settled:
+          type: boolean
+        facilitatorId:
+          type: string
+        receipt:
+          type: object
+          required: [txHash, verifiedAmount, asset, timestamp]
+          properties:
+            txHash:
+              type: string
+            verifiedAmount:
+              type: string
+            asset:
+              type: string
+            timestamp:
+              type: string
+              format: date-time
+
+    X402SettleResponse:
+      description: "x402 spec-compliant settlement response (facilitator endpoints)"
+      type: object
+      required: [success, transaction, network, payer]
+      properties:
+        success:
+          type: boolean
+        transaction:
+          type: string
+          description: "On-chain transaction hash"
+        network:
+          type: string
+          description: "CAIP-2 network identifier"
+          examples: ["eip155:8453"]
+        payer:
+          type: string
+          nullable: true
+          description: "Address of the payer"
+        errorReason:
+          type: string
+          description: "Human-readable error (only on failure)"
+
+    X402VerifyResponse:
+      description: "x402 spec-compliant verify response"
+      type: object
+      required: [isValid]
+      properties:
+        isValid:
+          type: boolean
+        payer:
+          type: string
+          description: "Payer address (only on success)"
+        invalidReason:
+          type: string
+          description: "Reason for failure (only on failure)"
+
+    ApiError:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          examples: ["INTERNAL_ERROR"]
+        message:
+          type: string
+        requestId:
+          type: string
+          format: uuid
+
+    ValidationError:
+      type: object
+      required: [code, message, errors]
+      properties:
+        code:
+          type: string
+          examples: ["INVALID_INPUT"]
+        message:
+          type: string
+        errors:
+          type: object
+          additionalProperties: true
+
+    EIP3009Authorization:
+      type: object
+      required: [from, to, value, validAfter, validBefore, nonce, v, r, s]
+      description: EIP-3009 transferWithAuthorization parameters including signature components
+      properties:
+        from:
+          type: string
+          description: Payer address (checksummed hex)
+          examples: ["0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045"]
+        to:
+          type: string
+          description: Recipient address (treasury)
+          examples: ["0xb23f146251e3816a011e800bcbae704baa5619ec"]
+        value:
+          type: string
+          description: Amount in token base units (e.g. 6 decimals for USDC)
+          examples: ["1000000"]
+        validAfter:
+          type: string
+          description: Unix timestamp before which the authorization is invalid
+          examples: ["0"]
+        validBefore:
+          type: string
+          description: Unix timestamp after which the authorization expires
+          examples: ["1735689600"]
+        nonce:
+          type: string
+          description: 32-byte random nonce (bytes32 hex)
+          examples: ["0x0000000000000000000000000000000000000000000000000000000000000001"]
+        v:
+          type: integer
+          description: Signature recovery parameter (27 or 28)
+          examples: [27]
+        r:
+          type: string
+          description: Signature r component (32-byte hex)
+          examples: ["0xabcd..."]
+        s:
+          type: string
+          description: Signature s component (32-byte hex)
+          examples: ["0xef01..."]
+
+    X402PaymentPayload:
+      type: object
+      required: [x402Version, scheme, network, payload]
+      properties:
+        x402Version:
+          type: integer
+          examples: [2]
+        scheme:
+          type: string
+          enum: [exact, onchain, receipt]
+        network:
+          type: string
+          description: CAIP-2 network identifier
+          examples: ["eip155:8453"]
+        payload:
+          type: object
+          required: [signature, authorization]
+          properties:
+            signature:
+              type: string
+              description: 65-byte EIP-3009 permit signature (hex)
+              examples: ["0x..."]
+            authorization:
+              type: object
+              required: [from, to, value, validAfter, validBefore, nonce]
+              properties:
+                from:
+                  type: string
+                to:
+                  type: string
+                value:
+                  type: string
+                validAfter:
+                  type: string
+                validBefore:
+                  type: string
+                nonce:
+                  type: string
+
+    X402PaymentRequirements:
+      type: object
+      required: [scheme, network, maxAmountRequired, payTo, asset]
+      properties:
+        scheme:
+          type: string
+          enum: [exact, onchain, receipt]
+        network:
+          type: string
+          examples: ["eip155:8453"]
+        maxAmountRequired:
+          type: string
+          examples: ["1000000"]
+        resource:
+          type: string
+          format: uri
+        description:
+          type: string
+        payTo:
+          type: string
+          description: Treasury address
+          examples: ["0xb23f146251e3816a011e800bcbae704baa5619ec"]
+        asset:
+          type: string
+          description: ERC-20 contract address
+          examples: ["0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"]
+
+    X402VerifyRequest:
+      type: object
+      required: [paymentPayload, paymentRequirements]
+      properties:
+        paymentPayload:
+          $ref: '#/components/schemas/X402PaymentPayload'
+        paymentRequirements:
+          $ref: '#/components/schemas/X402PaymentRequirements'
+
+    X402SettleRequest:
+      type: object
+      required: [paymentPayload, paymentRequirements]
+      properties:
+        paymentPayload:
+          $ref: '#/components/schemas/X402PaymentPayload'
+        paymentRequirements:
+          $ref: '#/components/schemas/X402PaymentRequirements'
+
+    SupportedResponse:
+      type: object
+      required: [kinds, signers]
+      properties:
+        kinds:
+          type: array
+          description: Supported payment scheme/network combinations
+          items:
+            type: object
+            required: [x402Version, scheme, network, payTo]
+            properties:
+              x402Version:
+                type: integer
+              scheme:
+                type: string
+              network:
+                type: string
+              payTo:
+                type: string
+              asset:
+                type: string
+              maxAmountRequired:
+                type: string
+        signers:
+          type: array
+          description: Facilitator signer addresses
+          items:
+            type: string
+        extensions:
+          type: array
+          description: Optional protocol extensions supported
+          items:
+            type: string
+
+    V2ChatRequest:
+      type: object
+      required: [messages]
+      properties:
+        model:
+          type: string
+          description: Model ID. If omitted, P402 selects the optimal model.
+          examples: ["anthropic/claude-3-5-sonnet"]
+        messages:
+          type: array
+          items:
+            type: object
+            required: [role, content]
+            properties:
+              role:
+                type: string
+                enum: [system, user, assistant]
+              content:
+                type: string
+        stream:
+          type: boolean
+          default: false
+        p402:
+          type: object
+          description: P402-specific routing extensions
+          properties:
+            mode:
+              type: string
+              enum: [cost, quality, speed, balanced]
+              default: balanced
+              description: Routing optimization mode
+            cache:
+              type: boolean
+              default: false
+              description: Enable semantic similarity caching
+
+    V2ChatResponse:
+      type: object
+      required: [id, choices]
+      properties:
+        id:
+          type: string
+          examples: ["chatcmpl-123"]
+        object:
+          type: string
+          examples: ["chat.completion"]
+        created:
+          type: integer
+        model:
+          type: string
+        choices:
+          type: array
+          items:
+            type: object
+            properties:
+              index:
+                type: integer
+              message:
+                type: object
+                properties:
+                  role:
+                    type: string
+                  content:
+                    type: string
+              finish_reason:
+                type: string
+        usage:
+          type: object
+          properties:
+            prompt_tokens:
+              type: integer
+            completion_tokens:
+              type: integer
+            total_tokens:
+              type: integer
+        p402_metadata:
+          type: object
+          description: P402 routing metadata appended to every response
+          properties:
+            provider:
+              type: string
+              examples: ["anthropic"]
+            cost_usd:
+              type: number
+              examples: [0.00045]
+            cached:
+              type: boolean
+            latency_ms:
+              type: integer
+
+    JsonRpcRequest:
+      type: object
+      required: [jsonrpc, method]
+      properties:
+        jsonrpc:
+          type: string
+          enum: ["2.0"]
+        method:
+          type: string
+          description: A2A method name
+          enum: ["message/send", "x402/payment-submitted"]
+        params:
+          type: object
+          description: Method-specific parameters
+        id:
+          oneOf:
+            - type: string
+            - type: integer
+
+    JsonRpcResponse:
+      type: object
+      required: [jsonrpc, id]
+      properties:
+        jsonrpc:
+          type: string
+          enum: ["2.0"]
+        result:
+          type: object
+          description: Present on success
+        error:
+          type: object
+          description: Present on failure
+          properties:
+            code:
+              type: integer
+            message:
+              type: string
+            data:
+              type: object
+        id:
+          oneOf:
+            - type: string
+            - type: integer
+            - type: 'null'

@@ -1,0 +1,17 @@
+{
+  "name": "p402-protocol",
+  "private": true,
+  "workspaces": [
+    "packages/sdk",
+    "packages/cli"
+  ],
+  "scripts": {
+    "build": "npm run build -w packages/sdk && npm run build -w packages/cli",
+    "typecheck": "npm run typecheck -w packages/sdk && npm run typecheck -w packages/cli",
+    "lint": "npm run lint -w packages/sdk && npm run lint -w packages/cli",
+    "test": "npm run test -w packages/sdk"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
