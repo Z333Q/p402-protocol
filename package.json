@@ -3,11 +3,12 @@
   "private": true,
   "workspaces": [
     "packages/sdk",
-    "packages/cli"
+    "packages/cli",
+    "packages/mcp-server"
   ],
   "scripts": {
-    "build": "npm run build -w packages/sdk && npm run build -w packages/cli",
-    "typecheck": "npm run typecheck -w packages/sdk && npm run typecheck -w packages/cli",
+    "build": "npm run build -w packages/sdk && npm run build -w packages/cli && npm run build -w packages/mcp-server",
+    "typecheck": "npm run typecheck -w packages/sdk && npm run typecheck -w packages/cli && npm run typecheck -w packages/mcp-server",
     "lint": "npm run lint -w packages/sdk && npm run lint -w packages/cli",
     "test": "npm run test -w packages/sdk"
   },

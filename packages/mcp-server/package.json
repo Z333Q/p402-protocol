@@ -1,0 +1,64 @@
+{
+  "name": "@p402/mcp-server",
+  "version": "1.0.0",
+  "description": "MCP server for P402 AI Payment Router — route 300+ AI models with per-request USDC micropayments on Base L2",
+  "mcpName": "io.github.Z333Q/p402",
+  "author": "P402 Protocol <dev@p402.io>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Z333Q/p402-protocol.git",
+    "directory": "packages/mcp-server"
+  },
+  "homepage": "https://p402.io",
+  "bugs": {
+    "url": "https://github.com/Z333Q/p402-protocol/issues"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "p402",
+    "x402",
+    "payments",
+    "ai",
+    "agents",
+    "usdc",
+    "base",
+    "micropayments",
+    "llm-router",
+    "ai-payments",
+    "agent-payments",
+    "openai-compatible",
+    "blockchain"
+  ],
+  "type": "module",
+  "bin": {
+    "p402-mcp": "./dist/index.js"
+  },
+  "main": "./dist/index.js",
+  "files": [
+    "dist",
+    "README.md",
+    "server.json"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "dev": "tsx src/index.ts",
+    "start": "node dist/index.js",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "@p402/sdk": "^1.1.0",
+    "zod": "^3.22.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.9.3"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
