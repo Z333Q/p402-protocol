@@ -35,24 +35,26 @@ jobs:
         run: npm run build -w packages/sdk
         working-directory: .
 
-      - name: Bundle MCP server + compile extension
-        run: npm run vscode:prepublish
-
-      - name: Package extension
-        run: npx vsce package --no-dependencies
+      # Build once — vscode:prepublish bundles MCP server + compiles extension
+      # Then package into a .vsix. Both publish steps use the pre-built file
+      # so vscode:prepublish never runs again and duplicate-version errors
+      # cannot occur.
+      - name: Build and package extension
+        run: |
+          npm run vscode:prepublish
+          npx vsce package --no-dependencies --out p402.vsix
 
       - name: Publish to VS Code Marketplace
-        continue-on-error: true
-        run: npx vsce publish --no-dependencies -p ${{ secrets.VSCE_PAT }}
+        run: npx vsce publish --no-dependencies --packagePath p402.vsix -p ${{ secrets.VSCE_PAT }}
 
       - name: Create Open VSX namespace (no-op if already exists)
         run: npx ovsx create-namespace p402-protocol -p ${{ secrets.OVSX_TOKEN }} || true
 
       - name: Publish to Open VSX Registry
-        run: npx ovsx publish --no-dependencies -p ${{ secrets.OVSX_TOKEN }}
+        run: npx ovsx publish p402.vsix -p ${{ secrets.OVSX_TOKEN }}
 
       - name: Upload .vsix artifact
         uses: actions/upload-artifact@v4
         with:
           name: p402-vscode-extension
-          path: packages/vscode/*.vsix
+          path: packages/vscode/p402.vsix

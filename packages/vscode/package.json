@@ -2,7 +2,7 @@
   "name": "p402",
   "displayName": "P402 - AI Payment Router",
   "description": "Route 300+ AI models, enforce session budgets, settle per-request in USDC on Base. MCP server for Copilot agent mode with spend tracking and cost analytics.",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "publisher": "p402-protocol",
   "license": "MIT",
   "icon": "assets/p402-icon-128.png",
