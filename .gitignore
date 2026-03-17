@@ -7,3 +7,4 @@ dist/
 .DS_Store
 *.log
 .next/
+packages/vscode/p402-1.0.0.vsix

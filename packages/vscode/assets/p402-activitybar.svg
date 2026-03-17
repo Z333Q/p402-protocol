@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16">
+  <!-- border ring: exact same coords as your version, 'l' replaced with 'L' straight -->
+  <path fill="currentColor" fill-rule="evenodd" d="M14.11,8 H14.37 V14.37 H1.56 V7.89 H1.82 V1.89 H14.11 Z M13.33,2.54 H2.6 V13.53 H13.33 Z"/>
+  <!-- P letterform: curves replaced with straight lines, same geometry -->
+  <path fill="currentColor" fill-rule="evenodd" d="M10.41,8.39 V9.56 H7.35 V12.16 H4.42 V3.84 H10.40 V4.95 H11.51 V8.40 H10.40 V5.02 H6.95 V8.30 H10.40 Z"/>
+</svg>

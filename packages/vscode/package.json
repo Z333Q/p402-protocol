@@ -131,7 +131,7 @@
   },
   "scripts": {
     "vscode:prepublish": "npm run bundle-mcp && npm run compile",
-    "bundle-mcp": "node -e \"require('esbuild').build({entryPoints:['../mcp-server/src/index.ts'],bundle:true,platform:'node',format:'esm',target:'node20',outfile:'dist/mcp-server.mjs'}).catch(()=>process.exit(1))\"",
+    "bundle-mcp": "node -e \"require('esbuild').build({entryPoints:['../mcp-server/src/index.ts'],bundle:true,platform:'node',format:'esm',target:'node20',alias:{'@p402/sdk':'../../node_modules/@p402/sdk/dist/index.js'},outfile:'dist/mcp-server.mjs'}).catch(()=>process.exit(1))\"",
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
     "package": "vsce package",
