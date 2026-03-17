@@ -1,0 +1,53 @@
+name: Publish P402 VS Code Extension
+
+on:
+  push:
+    tags:
+      - 'vscode/v*'
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    name: Build and publish extension
+    runs-on: ubuntu-latest
+    if: github.repository == 'Z333Q/p402-protocol'
+    environment: vscode-publish
+    defaults:
+      run:
+        working-directory: packages/vscode
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: .
+
+      - name: Build SDK (required by MCP server bundle)
+        run: npm run build -w packages/sdk
+
+      - name: Bundle MCP server + compile extension
+        run: npm run vscode:prepublish
+
+      - name: Package extension
+        run: npx vsce package
+
+      - name: Publish to VS Code Marketplace
+        run: npx vsce publish -p ${{ secrets.VSCE_PAT }}
+
+      - name: Publish to Open VSX Registry
+        run: npx ovsx publish -p ${{ secrets.OVSX_TOKEN }}
+
+      - name: Upload .vsix artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: p402-vscode-extension
+          path: packages/vscode/*.vsix

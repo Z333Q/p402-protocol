@@ -1,0 +1,153 @@
+{
+  "name": "p402",
+  "displayName": "P402 - AI Payment Router",
+  "description": "Route 300+ AI models, enforce session budgets, settle per-request in USDC on Base. MCP server for Copilot agent mode with spend tracking and cost analytics.",
+  "version": "1.0.0",
+  "publisher": "p402-protocol",
+  "license": "MIT",
+  "icon": "assets/p402-icon-128.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Z333Q/p402-protocol.git",
+    "directory": "packages/vscode"
+  },
+  "homepage": "https://p402.io",
+  "bugs": {
+    "url": "https://github.com/Z333Q/p402-protocol/issues"
+  },
+  "engines": {
+    "vscode": "^1.96.0"
+  },
+  "categories": [
+    "AI",
+    "Other"
+  ],
+  "keywords": [
+    "mcp",
+    "mcp-server",
+    "ai",
+    "payments",
+    "micropayments",
+    "usdc",
+    "base",
+    "x402",
+    "llm",
+    "ai-router",
+    "copilot",
+    "agent",
+    "budget"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "mcpServers": {
+      "p402": {
+        "label": "P402 AI Payment Router",
+        "description": "Route 300+ AI models with spending budgets and USDC settlement"
+      }
+    },
+    "commands": [
+      {
+        "command": "p402.configure",
+        "title": "P402: Configure API Key"
+      },
+      {
+        "command": "p402.showBudget",
+        "title": "P402: Show Session Budget"
+      },
+      {
+        "command": "p402.switchMode",
+        "title": "P402: Switch Router Mode"
+      },
+      {
+        "command": "p402.openDashboard",
+        "title": "P402: Open Dashboard"
+      },
+      {
+        "command": "p402.createSession",
+        "title": "P402: Create Budget Session"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "p402",
+          "title": "P402",
+          "icon": "assets/p402-activitybar.svg"
+        }
+      ]
+    },
+    "views": {
+      "p402": [
+        {
+          "id": "p402.sessions",
+          "name": "Sessions"
+        },
+        {
+          "id": "p402.recentRequests",
+          "name": "Recent requests"
+        },
+        {
+          "id": "p402.providerStatus",
+          "name": "Provider status"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "P402",
+      "properties": {
+        "p402.apiKey": {
+          "type": "string",
+          "default": "",
+          "description": "Your P402 API key from p402.io/dashboard/settings",
+          "order": 1
+        },
+        "p402.routerMode": {
+          "type": "string",
+          "enum": ["cost", "quality", "speed", "balanced"],
+          "default": "balanced",
+          "description": "Default routing mode for AI requests",
+          "order": 2
+        },
+        "p402.showStatusBar": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show P402 spend tracker in the status bar",
+          "order": 3
+        }
+      }
+    },
+    "menus": {
+      "commandPalette": [
+        { "command": "p402.configure" },
+        { "command": "p402.showBudget" },
+        { "command": "p402.switchMode" },
+        { "command": "p402.openDashboard" },
+        { "command": "p402.createSession" }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run bundle-mcp && npm run compile",
+    "bundle-mcp": "node -e \"require('esbuild').build({entryPoints:['../mcp-server/src/index.ts'],bundle:true,platform:'node',format:'esm',target:'node20',outfile:'dist/mcp-server.mjs'}).catch(()=>process.exit(1))\"",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "package": "vsce package",
+    "publish:marketplace": "vsce publish",
+    "publish:openvsx": "ovsx publish"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.96.0",
+    "@vscode/vsce": "^3.0.0",
+    "esbuild": "^0.25.0",
+    "ovsx": "^0.9.0",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "@p402/sdk": "^1.1.0"
+  }
+}

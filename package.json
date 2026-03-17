@@ -4,7 +4,8 @@
   "workspaces": [
     "packages/sdk",
     "packages/cli",
-    "packages/mcp-server"
+    "packages/mcp-server",
+    "packages/vscode"
   ],
   "scripts": {
     "build": "npm run build -w packages/sdk && npm run build -w packages/cli && npm run build -w packages/mcp-server",
