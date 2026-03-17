@@ -1,0 +1,36 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.Z333Q/p402",
+  "description": "Multi-provider AI router with x402 micropayment settlement on Base L2. 1% flat fee.",
+  "repository": {
+    "url": "https://github.com/Z333Q/p402-protocol",
+    "source": "github"
+  },
+  "version": "1.0.0",
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "@p402/mcp-server",
+      "version": "1.0.0",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "P402_API_KEY",
+          "description": "Your P402 API key. Get one at https://p402.io/dashboard/settings",
+          "isRequired": true,
+          "isSecret": true,
+          "format": "string"
+        },
+        {
+          "name": "P402_ROUTER_URL",
+          "description": "P402 router base URL override. Defaults to https://p402.io",
+          "isRequired": false,
+          "isSecret": false,
+          "format": "string"
+        }
+      ]
+    }
+  ]
+}

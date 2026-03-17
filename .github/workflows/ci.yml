@@ -6,7 +6,6 @@ on:
   pull_request:
     branches: [main]
 
-# Minimum permissions — no write access for PRs from forks
 permissions:
   contents: read
 
@@ -14,25 +13,20 @@ jobs:
   typecheck-sdk:
     name: Type-check SDK
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: packages/sdk
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - uses: actions/setup-node@1d0ff469b7ec7b3cb9d8673fde0c81c44821de2a # v4.2.0
         with:
           node-version: '20'
           cache: 'npm'
+      # Install from workspace root — lockfile lives here, not in package subdirs
       - run: npm ci
-      - run: npm audit --audit-level=high
-      - run: npm run typecheck
+      - run: npm audit --audit-level=high --workspace packages/sdk
+      - run: npm run typecheck --workspace packages/sdk
 
   typecheck-cli:
     name: Type-check CLI
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: packages/cli
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - uses: actions/setup-node@1d0ff469b7ec7b3cb9d8673fde0c81c44821de2a # v4.2.0
@@ -40,5 +34,5 @@ jobs:
           node-version: '20'
           cache: 'npm'
       - run: npm ci
-      - run: npm audit --audit-level=high
-      - run: npm run typecheck
+      - run: npm audit --audit-level=high --workspace packages/cli
+      - run: npm run typecheck --workspace packages/cli
