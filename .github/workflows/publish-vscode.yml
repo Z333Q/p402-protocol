@@ -33,6 +33,7 @@ jobs:
 
       - name: Build SDK (required by MCP server bundle)
         run: npm run build -w packages/sdk
+        working-directory: .
 
       - name: Bundle MCP server + compile extension
         run: npm run vscode:prepublish
