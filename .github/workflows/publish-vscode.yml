@@ -39,13 +39,13 @@ jobs:
         run: npm run vscode:prepublish
 
       - name: Package extension
-        run: npx vsce package
+        run: npx vsce package --no-dependencies
 
       - name: Publish to VS Code Marketplace
-        run: npx vsce publish -p ${{ secrets.VSCE_PAT }}
+        run: npx vsce publish --no-dependencies -p ${{ secrets.VSCE_PAT }}
 
       - name: Publish to Open VSX Registry
-        run: npx ovsx publish -p ${{ secrets.OVSX_TOKEN }}
+        run: npx ovsx publish --no-dependencies -p ${{ secrets.OVSX_TOKEN }}
 
       - name: Upload .vsix artifact
         uses: actions/upload-artifact@v4
