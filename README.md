@@ -2,6 +2,8 @@
 
 [![npm @p402/sdk](https://img.shields.io/npm/v/@p402/sdk?label=%40p402%2Fsdk&color=B6FF2E)](https://www.npmjs.com/package/@p402/sdk)
 [![npm @p402/cli](https://img.shields.io/npm/v/@p402/cli?label=%40p402%2Fcli&color=B6FF2E)](https://www.npmjs.com/package/@p402/cli)
+[![npm @p402/mcp-server](https://img.shields.io/npm/v/@p402/mcp-server?label=%40p402%2Fmcp-server&color=B6FF2E)](https://www.npmjs.com/package/@p402/mcp-server)
+[![VS Code Marketplace](https://img.shields.io/visual-studio-marketplace/v/p402-protocol.p402?label=VS%20Code&color=B6FF2E)](https://marketplace.visualstudio.com/items?itemName=p402-protocol.p402)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Docs](https://img.shields.io/badge/docs-p402.io-black)](https://p402.io/docs)
 
@@ -20,6 +22,38 @@ P402 sits between your AI application and every LLM provider. It handles intelli
 | No spending limits for AI agents | Session budgets + AP2 mandate governance |
 | Fragmented provider APIs | One OpenAI-compatible endpoint |
 | No visibility into AI costs | Real-time analytics + optimization suggestions |
+
+---
+
+## Quick Start (VS Code / Cursor / Windsurf)
+
+Install the extension — the MCP server is embedded, tools appear in Copilot agent mode immediately, no config files required:
+
+```
+ext install p402-protocol.p402
+```
+
+Then run `P402: Configure API Key` from the command palette.
+
+→ [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=p402-protocol.p402) · [Open VSX](https://open-vsx.org/extension/p402-protocol/p402)
+
+---
+
+## Quick Start (Claude Desktop / any MCP client)
+
+```json
+{
+  "mcpServers": {
+    "p402": {
+      "command": "npx",
+      "args": ["-y", "@p402/mcp-server"],
+      "env": { "P402_API_KEY": "p402_live_..." }
+    }
+  }
+}
+```
+
+→ [MCP docs](https://p402.io/docs/mcp) · [MCP Registry](https://registry.modelcontextprotocol.io)
 
 ---
 
@@ -135,6 +169,8 @@ POST https://p402.io/api/a2a
 |---|---|---|
 | [`@p402/sdk`](packages/sdk/) | TypeScript SDK — P402Client, types, EIP-712 mandate helpers | [![npm](https://img.shields.io/npm/v/@p402/sdk)](https://www.npmjs.com/package/@p402/sdk) |
 | [`@p402/cli`](packages/cli/) | CLI tool — login, chat, sessions, mandates, analytics | [![npm](https://img.shields.io/npm/v/@p402/cli)](https://www.npmjs.com/package/@p402/cli) |
+| [`@p402/mcp-server`](packages/mcp-server/) | stdio MCP server — 6 tools over Model Context Protocol | [![npm](https://img.shields.io/npm/v/@p402/mcp-server)](https://www.npmjs.com/package/@p402/mcp-server) |
+| [`p402` VS Code extension](packages/vscode/) | Embedded MCP server for VS Code, Cursor, and Windsurf — zero config | [![Marketplace](https://img.shields.io/visual-studio-marketplace/v/p402-protocol.p402)](https://marketplace.visualstudio.com/items?itemName=p402-protocol.p402) |
 
 ---
 
