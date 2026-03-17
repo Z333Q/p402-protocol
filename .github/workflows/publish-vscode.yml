@@ -44,6 +44,9 @@ jobs:
       - name: Publish to VS Code Marketplace
         run: npx vsce publish --no-dependencies -p ${{ secrets.VSCE_PAT }}
 
+      - name: Create Open VSX namespace (no-op if already exists)
+        run: npx ovsx create-namespace p402-protocol -p ${{ secrets.OVSX_TOKEN }} || true
+
       - name: Publish to Open VSX Registry
         run: npx ovsx publish --no-dependencies -p ${{ secrets.OVSX_TOKEN }}
 
