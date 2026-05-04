@@ -1,0 +1,50 @@
+{
+  "name": "@p402/mpp-method",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "P402 payment methods for mppx: multi-rail AI micropayments on Base and Tempo with Billing Guard",
+  "author": "P402 Protocol <dev@p402.io>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Z333Q/p402-protocol.git",
+    "directory": "packages/mpp-method"
+  },
+  "homepage": "https://p402.io",
+  "bugs": {
+    "url": "https://github.com/Z333Q/p402-protocol/issues"
+  },
+  "keywords": [
+    "p402", "mppx", "payments", "ai", "micropayments",
+    "x402", "base", "tempo", "usdc", "agents"
+  ],
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": ["dist", "README.md"],
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "prepare": "npm run build",
+    "prepublishOnly": "npm run build"
+  },
+  "peerDependencies": {
+    "mppx": ">=0.6.14",
+    "viem": ">=2.48.0"
+  },
+  "devDependencies": {
+    "mppx": "^0.6.14",
+    "typescript": "^5.0.0",
+    "viem": "^2.48.8",
+    "vitest": "^4.0.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
