@@ -1,6 +1,6 @@
 {
   "name": "@p402/cli",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Official CLI for the P402 AI Payment Router",
   "author": "P402 Protocol <dev@p402.io>",
   "license": "MIT",

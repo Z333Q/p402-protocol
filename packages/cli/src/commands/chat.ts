@@ -18,10 +18,21 @@ interface ChatResponse {
     total_tokens?: number;
   };
   model?: string;
+  p402_metadata?: {
+    human_verified?: boolean;
+    human_usage_remaining?: number | null;
+    provider?: string;
+    cost_usd?: number;
+    credits_spent?: number;
+    credits_balance?: number | null;
+    payment_rail?: string | null;
+    analytics_tag?: string | null;
+  };
   [key: string]: unknown;
 }
 
 type RoutingMode = 'cost' | 'quality' | 'speed' | 'balanced';
+type Rail = 'auto' | 'tempo' | 'base';
 
 export function chatCommand(): Command {
   const cmd = new Command('chat');
@@ -31,12 +42,16 @@ export function chatCommand(): Command {
     .option('-m, --mode <mode>', 'Routing mode: cost|quality|speed|balanced', 'balanced')
     .option('--model <model>', 'Override model (e.g. gpt-4o, claude-3-5-sonnet)')
     .option('--session <id>', 'Attach to an existing session')
+    .option('--rail <rail>', 'Settlement rail: auto|tempo|base (default: auto)', 'auto')
+    .option('--tag <tag>', 'Analytics attribution tag (e.g. research-agent)')
     .option('--stream', 'Stream response tokens as they arrive')
     .option('--json', 'Output full API response as JSON')
     .action(async (message: string, opts: {
       mode?: string;
       model?: string;
       session?: string;
+      rail?: string;
+      tag?: string;
       stream?: boolean;
       json?: boolean;
     }) => {
@@ -46,13 +61,20 @@ export function chatCommand(): Command {
       const validModes: RoutingMode[] = ['cost', 'quality', 'speed', 'balanced'];
       const mode = (validModes.includes(opts.mode as RoutingMode) ? opts.mode : 'balanced') as RoutingMode;
 
+      const validRails: Rail[] = ['auto', 'tempo', 'base'];
+      const rail = (validRails.includes(opts.rail as Rail) ? opts.rail : 'auto') as Rail;
+
+      const p402Block: Record<string, unknown> = { mode };
+      if (rail !== 'auto') p402Block['preferred_rail'] = rail;
+      if (opts.tag) p402Block['analytics_tag'] = opts.tag;
+      if (opts.session) p402Block['session_id'] = opts.session;
+
       const body: Record<string, unknown> = {
         messages: [{ role: 'user', content: message }],
-        routing_mode: mode,
         stream: opts.stream ?? false,
+        p402: p402Block,
       };
       if (opts.model) body['model'] = opts.model;
-      if (opts.session) body['session_id'] = opts.session;
 
       if (opts.stream) {
         // Streaming path
@@ -135,12 +157,29 @@ export function chatCommand(): Command {
         const content = data.choices?.[0]?.message?.content ?? '';
         console.log('\n' + content + '\n');
 
-        if (data.model) {
-          process.stdout.write(fmt.dim(`  model: ${data.model}`));
-        }
+        const footerParts: string[] = [];
+        if (data.model) footerParts.push(`model: ${data.model}`);
         if (data.usage) {
           const u = data.usage;
-          process.stdout.write(fmt.dim(`  tokens: ${u.prompt_tokens ?? 0} in / ${u.completion_tokens ?? 0} out`));
+          footerParts.push(`tokens: ${u.prompt_tokens ?? 0} in / ${u.completion_tokens ?? 0} out`);
+        }
+        if (data.p402_metadata?.human_verified) {
+          const remaining = data.p402_metadata.human_usage_remaining;
+          const badge = fmt.primary('[VERIFIED]');
+          const uses = remaining != null ? fmt.dim(` (${remaining} free uses left)`) : '';
+          footerParts.push(`${badge}${uses}`);
+        }
+        if (data.p402_metadata?.credits_balance != null) {
+          const bal = data.p402_metadata.credits_balance;
+          const spent = data.p402_metadata.credits_spent;
+          const spentStr = spent ? fmt.dim(` -${spent}`) : '';
+          footerParts.push(`credits: ${fmt.primary(String(bal))}${spentStr}`);
+        }
+        if (data.p402_metadata?.payment_rail) {
+          footerParts.push(`rail: ${fmt.primary(data.p402_metadata.payment_rail)}`);
+        }
+        if (footerParts.length > 0) {
+          process.stdout.write(fmt.dim('  ') + footerParts.join(fmt.dim('  ·  ')));
         }
         console.log('\n');
       } catch (err: unknown) {

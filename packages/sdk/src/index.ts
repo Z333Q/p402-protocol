@@ -24,7 +24,8 @@ import type {
     Mandate,
     EIP3009Authorization,
     EIP712Mandate,
-    SignedMandate
+    SignedMandate,
+    WorldIdSigner,
 } from './types';
 
 // =============================================================================
@@ -46,7 +47,7 @@ export class P402Error extends Error {
 // PRESET TOKENS
 // =============================================================================
 
-export const PRESET_TOKENS: Record<string, Record<Network, TokenConfig>> = {
+export const PRESET_TOKENS: Record<string, Partial<Record<Network, TokenConfig>>> = {
     USDC: {
         'eip155:8453': {
             address: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
@@ -65,6 +66,14 @@ export const PRESET_TOKENS: Record<string, Record<Network, TokenConfig>> = {
             decimals: 6,
             symbol: 'USDC',
             eip712: { name: 'USD Coin', version: '2' }
+        }
+    },
+    /** USDC.e on Tempo mainnet (chain 4217) — TIP-20 system contract, bytecode = 0xef */
+    USDCe: {
+        'eip155:4217': {
+            address: '0x20c000000000000000000000b9537d11c60e8b50',
+            decimals: 6,
+            symbol: 'USDC.e',
         }
     }
 };
@@ -88,12 +97,16 @@ export class P402Client {
     private debug: boolean;
     private apiKey?: string;
     private defaultNetwork: Network;
+    private worldIdSigner?: WorldIdSigner;
+    private worldIdEnabled: boolean;
 
     constructor(config: P402Config = {}) {
         this.routerUrl = (config.routerUrl || 'https://p402.io').replace(/\/$/, '');
         this.debug = config.debug || false;
         this.apiKey = config.apiKey;
         this.defaultNetwork = config.network || 'eip155:8453';
+        this.worldIdSigner = config.worldId?.signer;
+        this.worldIdEnabled = config.worldId?.enabled !== false && !!config.worldId?.signer;
     }
 
     private log(msg: string, data?: unknown) {
@@ -232,22 +245,164 @@ export class P402Client {
     /**
      * Send a chat completion request through P402's multi-provider router.
      * Automatically selects the best provider based on mode.
+     *
+     * When `worldId.signer` is configured and the server returns a billing
+     * error with an AgentKit challenge, the SDK transparently signs the SIWE
+     * challenge and retries once to claim free-trial access.
      */
     async chat(request: ChatCompletionRequest): Promise<ChatCompletionResponse> {
         this.log('Chat completion request', request);
+        return this._chatWithAgentkit(request, false);
+    }
 
+    private async _chatWithAgentkit(
+        request: ChatCompletionRequest,
+        isRetry: boolean
+    ): Promise<ChatCompletionResponse> {
         const res = await fetch(`${this.routerUrl}/api/v2/chat/completions`, {
             method: 'POST',
             headers: this.headers(),
             body: JSON.stringify(request)
         });
 
-        if (!res.ok) {
-            const error = await res.json().catch(() => ({})) as { message?: string };
-            throw new P402Error('NETWORK_ERROR', `Chat request failed: ${res.statusText}`, error);
+        if (res.ok) {
+            return res.json() as Promise<ChatCompletionResponse>;
         }
 
-        return res.json() as Promise<ChatCompletionResponse>;
+        // On a rate-limit / billing error, check for an AgentKit challenge
+        if (res.status === 429 && !isRetry && this.worldIdEnabled && this.worldIdSigner) {
+            const body = await res.json().catch(() => ({})) as {
+                error?: { message?: string; code?: string };
+                agentkit_challenge?: Record<string, {
+                    info?: {
+                        domain?: string;
+                        uri?: string;
+                        statement?: string;
+                        version?: string;
+                        nonce?: string;
+                        issuedAt?: string;
+                        expirationTime?: string;
+                    };
+                    supportedChains?: Array<{ chainId: string; type: string }>;
+                }>;
+            };
+
+            const challenge = body.agentkit_challenge?.['agentkit'];
+            if (challenge?.info?.nonce) {
+                this.log('AgentKit challenge received, signing SIWE message...');
+                try {
+                    const agentkitHeader = await this._signAgentkitChallenge(
+                        challenge.info as Required<Pick<NonNullable<typeof challenge.info>, 'domain' | 'uri' | 'nonce' | 'issuedAt' | 'version'>> & typeof challenge.info,
+                        challenge.supportedChains
+                    );
+                    if (agentkitHeader) {
+                        this.log('Retrying with AgentKit proof...');
+                        // Retry once with the signed agentkit header
+                        const retryRes = await fetch(`${this.routerUrl}/api/v2/chat/completions`, {
+                            method: 'POST',
+                            headers: { ...this.headers(), agentkit: agentkitHeader },
+                            body: JSON.stringify(request)
+                        });
+                        if (retryRes.ok) {
+                            return retryRes.json() as Promise<ChatCompletionResponse>;
+                        }
+                        const retryErr = await retryRes.json().catch(() => ({})) as { message?: string };
+                        throw new P402Error('NETWORK_ERROR', `Chat request failed after AgentKit retry: ${retryRes.statusText}`, retryErr);
+                    }
+                } catch (sigErr) {
+                    this.log('AgentKit signing failed, re-throwing original error', sigErr);
+                }
+            }
+
+            throw new P402Error(
+                'RATE_LIMITED',
+                body.error?.message ?? 'Rate limit exceeded',
+                body.error
+            );
+        }
+
+        const error = await res.json().catch(() => ({})) as { message?: string };
+        throw new P402Error('NETWORK_ERROR', `Chat request failed: ${res.statusText}`, error);
+    }
+
+    /**
+     * Build and sign a CAIP-122 / EIP-4361 SIWE challenge from an AgentKit extension.
+     * Returns the base64-encoded AgentkitPayload string for the `agentkit` header.
+     */
+    private async _signAgentkitChallenge(
+        info: {
+            domain?: string;
+            uri?: string;
+            statement?: string;
+            version?: string;
+            nonce?: string;
+            issuedAt?: string;
+            expirationTime?: string;
+        },
+        supportedChains?: Array<{ chainId: string; type: string }>
+    ): Promise<string | null> {
+        const signer = this.worldIdSigner;
+        if (!signer) return null;
+
+        const domain = info.domain ?? 'p402.io';
+        const uri = info.uri ?? 'https://p402.io/api/v2/chat/completions';
+        const version = info.version ?? '1';
+        const nonce = info.nonce;
+        const issuedAt = info.issuedAt ?? new Date().toISOString();
+        const statement = info.statement;
+        const expirationTime = info.expirationTime;
+
+        if (!nonce) return null;
+
+        // Prefer the chain the signer was configured with; fall back to supportedChains[0] or Base mainnet
+        const chainId = signer.chainId
+            ?? supportedChains?.[0]?.chainId
+            ?? 'eip155:8453';
+
+        // Extract numeric chain ID for the SIWE message (EIP-4361 expects a decimal integer)
+        const numericChainId = chainId.split(':')[1] ?? '8453';
+
+        // Build the EIP-4361 SIWE message
+        const lines: string[] = [
+            `${domain} wants you to sign in with your Ethereum account:`,
+            signer.address,
+            '',
+        ];
+        if (statement) {
+            lines.push(statement, '');
+        }
+        lines.push(
+            `URI: ${uri}`,
+            `Version: ${version}`,
+            `Chain ID: ${numericChainId}`,
+            `Nonce: ${nonce}`,
+            `Issued At: ${issuedAt}`,
+        );
+        if (expirationTime) {
+            lines.push(`Expiration Time: ${expirationTime}`);
+        }
+
+        const message = lines.join('\n');
+        this.log('Signing SIWE message', message);
+
+        const signature = await signer.signMessage(message);
+
+        // Assemble the AgentkitPayload and base64-encode it
+        const payload = {
+            domain,
+            address: signer.address,
+            ...(statement && { statement }),
+            uri,
+            version,
+            chainId,
+            type: 'eip191' as const,
+            nonce,
+            issuedAt,
+            ...(expirationTime && { expirationTime }),
+            signature,
+        };
+
+        return btoa(JSON.stringify(payload));
     }
 
     // =========================================================================
