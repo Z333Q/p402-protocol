@@ -22,6 +22,10 @@ updates:
       day: "monday"
     commit-message:
       prefix: "deps(sdk)"
+    ignore:
+      # Project targets Node 20 LTS — don't bump @types/node past major 20
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
     # Group devDependency patch updates to reduce noise
     groups:
       sdk-dev-patch:
@@ -36,6 +40,9 @@ updates:
       day: "monday"
     commit-message:
       prefix: "deps(cli)"
+    ignore:
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
     groups:
       cli-prod-patch:
         dependency-type: "production"
@@ -43,3 +50,39 @@ updates:
       cli-dev-patch:
         dependency-type: "development"
         update-types: ["patch"]
+
+  # Scan MCP server dependencies
+  - package-ecosystem: "npm"
+    directory: "/packages/mcp-server"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    commit-message:
+      prefix: "deps(mcp)"
+    ignore:
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
+
+  # Scan mpp-method dependencies
+  - package-ecosystem: "npm"
+    directory: "/packages/mpp-method"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    commit-message:
+      prefix: "deps(mpp)"
+    ignore:
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
+
+  # Scan VSCode extension dependencies
+  - package-ecosystem: "npm"
+    directory: "/packages/vscode"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    commit-message:
+      prefix: "deps(vscode)"
+    ignore:
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
