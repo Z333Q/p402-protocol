@@ -1,6 +1,6 @@
 version: 2
 updates:
-  # Scan GitHub Actions for updates
+  # GitHub Actions
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
@@ -8,81 +8,31 @@ updates:
       day: "monday"
     commit-message:
       prefix: "ci"
-    # Auto-approve only patch updates on actions (minor/major require human review)
     groups:
       actions-minor:
         patterns: ["actions/*"]
         update-types: ["minor", "patch"]
 
-  # Scan SDK dependencies
+  # npm — single entry at workspace root.
+  # The repo is an npm workspaces monorepo with a root package-lock.json,
+  # so Dependabot must scan from "/" to keep the lockfile in sync when bumping
+  # any workspace package. Per-package entries break `npm ci` because Dependabot
+  # only updates the workspace's package.json and leaves the root lockfile stale.
   - package-ecosystem: "npm"
-    directory: "/packages/sdk"
+    directory: "/"
     schedule:
       interval: "weekly"
       day: "monday"
     commit-message:
-      prefix: "deps(sdk)"
+      prefix: "deps"
     ignore:
       # Project targets Node 20 LTS — don't bump @types/node past major 20
       - dependency-name: "@types/node"
         update-types: ["version-update:semver-major"]
-    # Group devDependency patch updates to reduce noise
     groups:
-      sdk-dev-patch:
+      dev-patch:
         dependency-type: "development"
         update-types: ["patch"]
-
-  # Scan CLI dependencies
-  - package-ecosystem: "npm"
-    directory: "/packages/cli"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-    commit-message:
-      prefix: "deps(cli)"
-    ignore:
-      - dependency-name: "@types/node"
-        update-types: ["version-update:semver-major"]
-    groups:
-      cli-prod-patch:
+      prod-patch:
         dependency-type: "production"
         update-types: ["patch"]
-      cli-dev-patch:
-        dependency-type: "development"
-        update-types: ["patch"]
-
-  # Scan MCP server dependencies
-  - package-ecosystem: "npm"
-    directory: "/packages/mcp-server"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-    commit-message:
-      prefix: "deps(mcp)"
-    ignore:
-      - dependency-name: "@types/node"
-        update-types: ["version-update:semver-major"]
-
-  # Scan mpp-method dependencies
-  - package-ecosystem: "npm"
-    directory: "/packages/mpp-method"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-    commit-message:
-      prefix: "deps(mpp)"
-    ignore:
-      - dependency-name: "@types/node"
-        update-types: ["version-update:semver-major"]
-
-  # Scan VSCode extension dependencies
-  - package-ecosystem: "npm"
-    directory: "/packages/vscode"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-    commit-message:
-      prefix: "deps(vscode)"
-    ignore:
-      - dependency-name: "@types/node"
-        update-types: ["version-update:semver-major"]
