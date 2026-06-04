@@ -2,6 +2,7 @@
 import { Command } from 'commander';
 import { loginCommand, configCommand } from './commands/login.js';
 import { chatCommand } from './commands/chat.js';
+import { agentCommand } from './commands/agent.js';
 import { modelsCommand } from './commands/models.js';
 import { providersCommand } from './commands/providers.js';
 import { sessionCommand } from './commands/session.js';
@@ -24,6 +25,7 @@ program
 program.addCommand(loginCommand());
 program.addCommand(configCommand());
 program.addCommand(chatCommand());
+program.addCommand(agentCommand());
 program.addCommand(healthCommand());
 
 // Grouped commands

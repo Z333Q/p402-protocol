@@ -141,6 +141,18 @@ p402 analytics spend [--period 1d|7d|30d] [--json]
 ```
 View spend analytics (total, per-request average, top providers).
 
+### `p402 agent register <address>`
+```
+p402 agent register <walletAddress> [--json]
+```
+Check if a wallet address is registered in the World AgentKit AgentBook contract on Base mainnet. Returns registration status, `human_verified` flag, and free-trial usage remaining.
+
+### `p402 agent status`
+```
+p402 agent status [--address <addr>] [--json]
+```
+Show World AgentKit status for the agent at `--address` (or the wallet in `P402_AGENT_ADDRESS`). Returns registration state, human ID, AgentKit enablement flag, and network.
+
 ## Configuration
 
 The CLI reads config from (in priority order):
