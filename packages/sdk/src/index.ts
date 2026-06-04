@@ -4,7 +4,14 @@ import { base } from 'viem/chains';
 // Re-export all types
 export * from './types';
 export * from './mandate';
+export { P402Error } from './errors';
+export { MeterClient, scanForForbiddenContent } from './meter';
+export { OutcomesClient } from './outcomes';
 export type { Address, Hash, Hex } from 'viem';
+
+import { MeterClient } from './meter';
+import { OutcomesClient } from './outcomes';
+import { P402Error as P402ErrorClass } from './errors';
 
 import type {
     P402Config,
@@ -29,19 +36,12 @@ import type {
 } from './types';
 
 // =============================================================================
-// ERROR CLASS
+// ERROR CLASS  (re-exported from ./errors above)
 // =============================================================================
 
-export class P402Error extends Error {
-    constructor(
-        public code: P402ErrorCode,
-        message: string,
-        public details?: unknown
-    ) {
-        super(message);
-        this.name = 'P402Error';
-    }
-}
+// Backwards-compat alias for code in this file that pre-dated the
+// extraction. The exported symbol is `P402Error` (see re-export above).
+const P402Error = P402ErrorClass;
 
 // =============================================================================
 // PRESET TOKENS
@@ -100,6 +100,11 @@ export class P402Client {
     private worldIdSigner?: WorldIdSigner;
     private worldIdEnabled: boolean;
 
+    /** Economic-event metering (V5 §27 Path B). See MeterClient. */
+    public readonly meter: MeterClient;
+    /** Outcomes recorder — feeds Optimize (V5 §28). */
+    public readonly outcomes: OutcomesClient;
+
     constructor(config: P402Config = {}) {
         this.routerUrl = (config.routerUrl || 'https://p402.io').replace(/\/$/, '');
         this.debug = config.debug || false;
@@ -107,6 +112,14 @@ export class P402Client {
         this.defaultNetwork = config.network || 'eip155:8453';
         this.worldIdSigner = config.worldId?.signer;
         this.worldIdEnabled = config.worldId?.enabled !== false && !!config.worldId?.signer;
+
+        const deps = {
+            routerUrl: this.routerUrl,
+            headers:   () => this.headers(),
+            log:       (msg: string, data?: unknown) => this.log(msg, data),
+        };
+        this.meter    = new MeterClient(deps);
+        this.outcomes = new OutcomesClient(deps);
     }
 
     private log(msg: string, data?: unknown) {

@@ -89,6 +89,77 @@ const { budget } = await p402.getSession(session.id);
 
 Add budget to an existing session.
 
+### `meter.recordEvent(input)` → `MeterEventResult`
+
+Record an economic event for an AI action you ran outside P402's hosted router (Path B: customer apps that call OpenAI / Anthropic / Gemini directly, then post only economics back to P402).
+
+**Privacy contract.** This endpoint refuses any content-bearing top-level key (`prompt`, `response`, `messages`, `content`, `file`, `document`, `transcript`, `chat_history`, `pii`, `phi`, `secret`, `source_code`, ...). The SDK rejects locally — no network request fires — before the router gets a chance to reject. P402 meters economics, not content.
+
+```typescript
+const result = await p402.meter.recordEvent({
+  request_id: 'req_abc123',
+  attribution: {
+    department_id: 'claims',
+    workflow_id: 'prior_authorization',
+    action_type: 'claims_summary',
+  },
+  model: {
+    provider: 'google',
+    model_used: 'gemini-2.0-flash',
+  },
+  usage: {
+    input_tokens: 2140,
+    output_tokens: 801,
+    cost_usd: 0.0041,
+    latency_ms: 720,
+  },
+  outcome: {
+    status: 'accepted',
+    quality_score: 0.91,
+  },
+});
+
+if (result.deferred) {
+  // 202: canonical ledger insert failed; durability outbox captured the
+  // row. The retry worker will replay. No event_id yet.
+  console.log('deferred to outbox', result.request_id);
+} else {
+  // 200: canonical write landed.
+  console.log('event_id', result.event_id);
+}
+```
+
+### `meter.listEvents(params?)` → `{ events: MeterEvent[] }`
+
+List recent economic events for the tenant. All filters optional.
+
+```typescript
+const { events } = await p402.meter.listEvents({
+  privacy_mode: 'metadata_only',
+  department_id: 'claims',
+  provider: 'google',
+  evidence_status: 'present',
+  since: new Date(Date.now() - 24 * 3600 * 1000),
+  limit: 100,
+});
+```
+
+### `meter.getEvent(eventId)` → `MeterEvent`
+
+Fetch one event with the full privacy posture (mode, source, storage decisions, retention expiry).
+
+### `outcomes.record(input)` → `OutcomeResult`
+
+Record the outcome of a recorded action (feeds the Optimize layer).
+
+```typescript
+await p402.outcomes.record({
+  request_id: 'req_abc123',
+  status: 'accepted',        // accepted | rejected | retried | escalated | human_reviewed | failed
+  quality_score: 0.91,       // optional, [0, 1]
+});
+```
+
 ### `plan(request)` → `PlanResponse`
 
 Dry-run routing — see which facilitator would handle a payment without settling.
