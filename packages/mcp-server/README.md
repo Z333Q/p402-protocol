@@ -85,6 +85,18 @@ Compare providers side-by-side for a given task type.
 task_type    string   chat | embedding | code | reasoning (optional)
 ```
 
+### `p402_agent_status`
+
+Check World AgentKit registration status and credit balance for a wallet address.
+
+```
+wallet_address    string   The Base wallet address to check (optional — uses P402_AGENT_ADDRESS env if omitted)
+```
+
+**Returns:** `{ registered, human_verified, human_usage_remaining, reputation_score, credits_remaining }`
+
+Enable World AgentKit awareness by setting `P402_WORLD_ID_ENABLED=true` in the MCP server environment.
+
 ### `p402_health`
 
 Check router and on-chain facilitator health.
