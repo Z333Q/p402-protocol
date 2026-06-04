@@ -12,10 +12,10 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { MeterClient, scanForForbiddenContent } from './meter';
-import { OutcomesClient } from './outcomes';
-import { P402Error } from './errors';
-import { METER_FORBIDDEN_CONTENT_KEYS, type MeterEventInput } from './types';
+import { MeterClient, scanForForbiddenContent } from './meter.js';
+import { OutcomesClient } from './outcomes.js';
+import { P402Error } from './errors.js';
+import { METER_FORBIDDEN_CONTENT_KEYS, type MeterEventInput } from './types.js';
 
 const ROUTER = 'https://router.test';
 const headers = () => ({ 'Content-Type': 'application/json' });

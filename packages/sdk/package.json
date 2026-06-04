@@ -17,14 +17,13 @@
     "p402", "x402", "payments", "ai", "agents",
     "eip-3009", "eip-712", "usdc", "base", "openai"
   ],
+  "type": "module",
   "main": "dist/index.js",
-  "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.js"
+      "import": "./dist/index.js"
     }
   },
   "files": ["dist", "README.md"],
@@ -32,7 +31,8 @@
     "build": "tsc",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "prepublishOnly": "npm run build"
+    "smoke": "node scripts/smoke-esm.mjs",
+    "prepublishOnly": "npm run build && npm run smoke"
   },
   "peerDependencies": {
     "viem": "^2.0.0"

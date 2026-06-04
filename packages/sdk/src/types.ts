@@ -346,7 +346,7 @@ export interface PaymentResult {
     success: boolean;
     txHash?: Hash;
     receipt?: SettleResponse['receipt'];
-    error?: import('./errors').P402Error;
+    error?: import('./errors.js').P402Error;
 }
 
 export interface TokenConfig {

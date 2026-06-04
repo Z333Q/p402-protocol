@@ -6,8 +6,8 @@
  * (tenant_id, request_id); repeat calls UPSERT.
  */
 
-import type { OutcomeInput, OutcomeResult, OutcomeStatus } from './types';
-import { P402Error } from './errors';
+import type { OutcomeInput, OutcomeResult, OutcomeStatus } from './types.js';
+import { P402Error } from './errors.js';
 
 const VALID_OUTCOME_STATUSES: ReadonlySet<OutcomeStatus> = new Set<OutcomeStatus>([
     'accepted', 'rejected', 'retried', 'escalated', 'human_reviewed', 'failed',

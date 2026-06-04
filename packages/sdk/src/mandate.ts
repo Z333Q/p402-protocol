@@ -5,7 +5,7 @@
  */
 
 import { keccak256, toBytes, type Address, type Hex } from 'viem';
-import type { EIP712Mandate, SignedMandate } from './types';
+import type { EIP712Mandate, SignedMandate } from './types.js';
 
 // =============================================================================
 // EIP-712 DOMAIN & TYPES

@@ -22,8 +22,8 @@ import {
     type MeterEvent,
     type ListMeterEventsParams,
     type ListMeterEventsResponse,
-} from './types';
-import { P402Error } from './errors';
+} from './types.js';
+import { P402Error } from './errors.js';
 
 type Fetcher = (url: string, init?: RequestInit) => Promise<Response>;
 
@@ -180,7 +180,7 @@ export class MeterClient {
     }
 }
 
-function mapHttpToP402Error(status: number, code?: string): import('./types').P402ErrorCode {
+function mapHttpToP402Error(status: number, code?: string): import('./types.js').P402ErrorCode {
     if (status === 401 || status === 403) return 'UNAUTHORIZED';
     if (status === 429) return 'RATE_LIMITED';
     if (status === 400) {

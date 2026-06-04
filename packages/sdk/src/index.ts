@@ -2,16 +2,16 @@ import { createPublicClient, http, encodeFunctionData, parseUnits, Hash, Address
 import { base } from 'viem/chains';
 
 // Re-export all types
-export * from './types';
-export * from './mandate';
-export { P402Error } from './errors';
-export { MeterClient, scanForForbiddenContent } from './meter';
-export { OutcomesClient } from './outcomes';
+export * from './types.js';
+export * from './mandate.js';
+export { P402Error } from './errors.js';
+export { MeterClient, scanForForbiddenContent } from './meter.js';
+export { OutcomesClient } from './outcomes.js';
 export type { Address, Hash, Hex } from 'viem';
 
-import { MeterClient } from './meter';
-import { OutcomesClient } from './outcomes';
-import { P402Error as P402ErrorClass } from './errors';
+import { MeterClient } from './meter.js';
+import { OutcomesClient } from './outcomes.js';
+import { P402Error as P402ErrorClass } from './errors.js';
 
 import type {
     P402Config,
@@ -33,7 +33,7 @@ import type {
     EIP712Mandate,
     SignedMandate,
     WorldIdSigner,
-} from './types';
+} from './types.js';
 
 // =============================================================================
 // ERROR CLASS  (re-exported from ./errors above)

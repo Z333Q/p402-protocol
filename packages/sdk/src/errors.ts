@@ -1,4 +1,4 @@
-import type { P402ErrorCode } from './types';
+import type { P402ErrorCode } from './types.js';
 
 export class P402Error extends Error {
     constructor(
