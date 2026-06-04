@@ -5,13 +5,14 @@
     "packages/sdk",
     "packages/cli",
     "packages/mcp-server",
+    "packages/mpp-method",
     "packages/vscode"
   ],
   "scripts": {
-    "build": "npm run build -w packages/sdk && npm run build -w packages/cli && npm run build -w packages/mcp-server",
-    "typecheck": "npm run typecheck -w packages/sdk && npm run typecheck -w packages/cli && npm run typecheck -w packages/mcp-server",
+    "build": "npm run build -w packages/sdk && npm run build -w packages/cli && npm run build -w packages/mcp-server && npm run build -w packages/mpp-method",
+    "typecheck": "npm run typecheck -w packages/sdk && npm run typecheck -w packages/cli && npm run typecheck -w packages/mcp-server && npm run typecheck -w packages/mpp-method",
     "lint": "npm run lint -w packages/sdk && npm run lint -w packages/cli",
-    "test": "npm run test -w packages/sdk"
+    "test": "npm run test -w packages/sdk && npm run test -w packages/mpp-method"
   },
   "engines": {
     "node": ">=20.0.0",
