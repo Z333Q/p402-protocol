@@ -63,6 +63,16 @@ p402 health [--json]
 ```
 Check P402 facilitator health (status, network, gas price, block number).
 
+### `p402 plan`
+```
+p402 plan [--json] [--current]
+```
+Print the P402 plan ladder — Sandbox / Build / Growth / Scale / Enterprise —
+matching the router's rate card v2 (effective 2026-06-21). `--json` emits the
+rate card as machine-readable JSON. `--current` will show the authenticated
+tenant's plan and month-to-date event usage once the router exposes a
+Bearer-authed endpoint; until then it points to the dashboard.
+
 ### `p402 models list`
 ```
 p402 models list [--json]

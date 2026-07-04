@@ -10,9 +10,10 @@ Complete endpoint documentation for P402.io V2 API. All endpoints use JSON reque
 5. [Analytics](#analytics)
 6. [Cache](#cache)
 7. [Meter Events](#meter-events)
-8. [TypeScript Interfaces](#typescript-interfaces)
-9. [Error Handling](#error-handling)
-10. [Response Headers](#response-headers)
+8. [Plans and Metering](#plans-and-metering)
+9. [TypeScript Interfaces](#typescript-interfaces)
+10. [Error Handling](#error-handling)
+11. [Response Headers](#response-headers)
 
 ---
 
@@ -491,6 +492,55 @@ decisions, retention expiry).
 Every path runs the content-key guard client-side before any fetch.
 Retries apply to network errors and 5xx with exponential backoff and
 full jitter; 429 is not retried and surfaces as `RATE_LIMITED`.
+
+---
+
+## Plans and Metering
+
+Public rate card v2, effective 2026-06-21. Source of truth:
+`lib/pricing/rate-card.ts` in the router. The CLI's `p402 plan` and the
+[pricing page](https://p402.io/pricing) both read from it.
+
+| Tier | Price | Included events / mo | Overage per 1k | Retention | Motion |
+|---|---|---|---|---|---|
+| Sandbox | Free | 25,000 | hard cap | 14 days | self-serve |
+| Build | $49 / mo | 250,000 | $0.25 | 30 days | sales-assisted |
+| Growth | $199 / mo | 1,000,000 | $0.15 | 90 days | sales-assisted |
+| Scale | $799 / mo (annual only) | 5,000,000 | $0.08 | 180 days | sales-led |
+| Enterprise | Custom | custom commit | trued up at renewal | custom | sales-led |
+
+**Metered unit.** A P402 economic event is any single AI action recorded
+in the ledger — whether routed through P402 (`/api/v2/chat/completions`)
+or metered directly (`/api/v2/meter/events` and `/batch`). Each unique
+`(tenant_id, request_id)` counts once regardless of retries; the router
+UPSERTs. Denied or blocked events are still recorded and metered so
+Governance / Control can prove enforcement.
+
+**Alerts.** In-product and email alerts fire at 50%, 80%, 100%, and 120%
+of the included allowance. Sandbox hard-caps at 100%; Build / Growth /
+Scale apply overage; Enterprise trues up at renewal.
+
+**Legacy plan vocabulary.** The billing runtime still stores plan ids
+under the legacy ladder (`free / pro / enterprise`) in
+`tenants.plan`, `billing_subscriptions.plan_id`, and Stripe metadata.
+`lib/billing/plan-compat.ts` bridges the two: `free ↔ sandbox`,
+`pro ↔ growth`, `enterprise ↔ enterprise`. `build` and `scale` are new
+canonical ids with no legacy equivalent yet; both currently reverse-map
+to `pro` for entitlement reads until the V5 plan matrix lands. Do not
+write legacy ids to new surfaces.
+
+**Bridge offers.** One-time or fixed-scope engagements orthogonal to
+the ladder: **AI Spend Audit** ($1,500 one-time),
+**Proof Sprint** ($5,000 / 2 weeks),
+**Paid Pilot** ($15,000 / 30 days),
+**Regulated Pilot** ($50,000 / 90 days).
+
+**Current-tier lookup.** The router does not yet expose a Bearer-authed
+endpoint for `GET /api/v2/billing/plan` returning
+`{ plan_id, included, used, overage_rate, retention_days }`. Until it
+does, the CLI's `p402 plan --current` prints a pointer to the dashboard.
+When the endpoint ships, the CLI will call it directly and print
+`Current plan: growth — 340k of 1M events used this month`.
 
 ---
 
