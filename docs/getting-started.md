@@ -62,7 +62,40 @@ npx p402 chat "Hello!"
 npx p402 health
 ```
 
-## 5. Explore
+## 5. Meter Events (Path B: no content ever leaves your process)
+
+If you call OpenAI / Anthropic / Gemini directly and still want P402's
+Meter / Monitor / Control / Optimize surfaces, post economics — never
+content — back to the router:
+
+```typescript
+import P402Client from '@p402/sdk';
+
+const p402 = new P402Client({ apiKey: process.env.P402_API_KEY });
+
+// Single event
+await p402.meter.recordEvent({
+  request_id: 'req_abc',
+  attribution: { department_id: 'claims', workflow_id: 'prior_auth' },
+  model: { provider: 'openai', model_used: 'gpt-4o-mini' },
+  usage: { input_tokens: 2140, output_tokens: 801, cost_usd: 0.0041 },
+});
+
+// Batch (SDK 1.2.1+) — one HTTP request, per-event UPSERT on the router
+await p402.meter.recordEventsBatch([
+  { request_id: 'req_1', usage: { cost_usd: 0.0002 } },
+  { request_id: 'req_2', usage: { cost_usd: 0.0003 } },
+]);
+```
+
+The SDK refuses to send any content-bearing key (`prompt`, `response`,
+`messages`, `content`, `file`, `document`, `transcript`, ...). Guard
+runs client-side before any network call.
+
+For fire-and-forget buffered metering with automatic flush and retry
+policy, see [examples/05-meter-events/](../examples/05-meter-events/).
+
+## 6. Explore
 
 | What | Where |
 |---|---|

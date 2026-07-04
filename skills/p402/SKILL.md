@@ -126,6 +126,9 @@ For API access, sign up at [p402.io](https://p402.io) to get your API key and ac
 | `/api/v2/analytics/spend` | GET | Spending analytics |
 | `/api/v2/analytics/recommendations` | GET | Cost optimization suggestions |
 | `/api/v2/cache/stats` | GET | Cache hit rate and savings |
+| `/api/v2/meter/events` | POST | Meter one economic event (Path B: content never leaves caller) |
+| `/api/v2/meter/events/batch` | POST | Meter N events in one request; per-event UPSERT idempotency |
+| `/api/v2/meter/events` | GET | List recent metered events (filterable) |
 | `/api/a2a` | POST | A2A JSON-RPC endpoint |
 | `/.well-known/agent.json` | GET | Agent discovery card |
 | `/api/a2a/mandates` | POST | Create AP2 spending mandate |
@@ -154,6 +157,10 @@ For machine-to-machine payments using the HTTP 402 flow: service responds with p
 ### Pattern 5: Cost Intelligence Dashboard
 
 Use `/api/v2/analytics/spend` for spending data and `/api/v2/analytics/recommendations` for optimization suggestions. The recommendations endpoint identifies cheaper model alternatives and estimates potential savings. Use `/api/v2/providers/compare` to show users real-time pricing comparisons.
+
+### Pattern 6: Meter-Only Path (call providers directly, meter to P402)
+
+For applications that already call OpenAI, Anthropic, or Gemini directly but want P402's Meter / Monitor / Control / Optimize surfaces without routing traffic through P402. Post economic events to `/api/v2/meter/events` (single) or `/api/v2/meter/events/batch` (many at once). The SDK's `p402.meter.recordEvent` and `p402.meter.recordEventsBatch` enforce a content-key guard client-side so `prompt`, `response`, `messages`, `content`, `file`, `document`, `transcript`, PII/PHI/secret keys are rejected before any network call. Idempotent on `(tenant_id, request_id)` via UPSERT; safe to retry. Buffered mode and retry policy live on `MeterClient` directly. See `examples/05-meter-events/`.
 
 ## Reference Files
 
