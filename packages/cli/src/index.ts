@@ -9,6 +9,7 @@ import { sessionCommand } from './commands/session.js';
 import { mandateCommand } from './commands/mandate.js';
 import { analyticsCommand } from './commands/analytics.js';
 import { healthCommand } from './commands/health.js';
+import { planCommand } from './commands/plan.js';
 import { fmt } from './output.js';
 
 const program = new Command();
@@ -27,6 +28,7 @@ program.addCommand(configCommand());
 program.addCommand(chatCommand());
 program.addCommand(agentCommand());
 program.addCommand(healthCommand());
+program.addCommand(planCommand());
 
 // Grouped commands
 program.addCommand(modelsCommand());

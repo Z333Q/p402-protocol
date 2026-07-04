@@ -9,9 +9,11 @@ Complete endpoint documentation for P402.io V2 API. All endpoints use JSON reque
 4. [Providers](#providers)
 5. [Analytics](#analytics)
 6. [Cache](#cache)
-7. [TypeScript Interfaces](#typescript-interfaces)
-8. [Error Handling](#error-handling)
-9. [Response Headers](#response-headers)
+7. [Meter Events](#meter-events)
+8. [Plans and Metering](#plans-and-metering)
+9. [TypeScript Interfaces](#typescript-interfaces)
+10. [Error Handling](#error-handling)
+11. [Response Headers](#response-headers)
 
 ---
 
@@ -361,6 +363,184 @@ Update cache settings (similarity threshold, TTL, max age).
 ### `GET /api/v2/cache/entries`
 
 Browse cached entries for debugging.
+
+---
+
+## Meter Events
+
+Path B of the P402 privacy model: applications that call model providers
+directly (OpenAI, Anthropic, Gemini, ...) post economic events back to
+P402 so Meter / Monitor / Control / Optimize work — without any prompt,
+response, or content field ever leaving the caller's process. The router
+rejects content-bearing top-level keys (`prompt`, `response`, `messages`,
+`content`, `file`, `document`, `transcript`, `chat_history`, `pii`,
+`phi`, `secret`, `source_code`). The SDK enforces the same list
+client-side before any HTTP call fires.
+
+Idempotent per `(tenant_id, request_id)` via UPSERT. Repeat submissions
+of the same `request_id` produce the same `event_id` — safe to retry.
+
+### `POST /api/v2/meter/events`
+
+Record a single economic event.
+
+**Request Body:**
+
+```typescript
+{
+  request_id: string,                  // required
+  source?: string,                     // free-form tag
+  privacy_mode?: 'metadata_only' | 'fingerprint_only'
+                | 'redacted_trace' | 'private_gateway' | 'full_trace',
+  attribution?: {
+    owner_type?: 'tenant' | 'department' | 'employee' | 'workflow'
+                 | 'project' | 'agent' | 'customer' | 'feature' | 'api_key',
+    owner_id?: string,
+    department_id?: string, employee_id?: string,
+    customer_id?: string,   project_id?: string,
+    feature_id?: string,    workflow_id?: string,
+    api_key_id?: string,
+    task_type?: string,     action_type?: string,
+  },
+  model?:  { provider?: string; model_used?: string; model_requested?: string },
+  usage?:  {
+    input_tokens?: number; output_tokens?: number; total_tokens?: number;
+    cost_usd?: number; direct_cost_usd?: number;
+    route_savings_usd?: number; cache_savings_usd?: number;
+    retry_cost_usd?: number; context_waste_usd?: number;
+    latency_ms?: number; cache_hit?: boolean;
+  },
+  economics?: { revenue_usd?: number; gross_margin_pct?: number },
+  governance?: {
+    budget_id?: string; policy_id?: string; mandate_id?: string;
+    decision?: 'approved' | 'denied' | 'warned' | ...; deny_code?: string;
+  },
+  evidence?: { receipt_id?: string; evidence_bundle_id?: string },
+  outcome?:  {
+    status?: 'accepted' | 'rejected' | 'retried' | 'escalated' | ...;
+    quality_score?: number;                        // [0, 1]
+    human_review_status?: 'not_required' | 'required' | ...;
+  },
+  metadata?: Record<string, unknown>,  // arbitrary JSONB
+}
+```
+
+**Responses:**
+
+- `200 OK` — canonical write. Returns `{ ok, event_id, request_id, privacy }`.
+- `202 Accepted` — durability outbox captured the row; retry worker
+  will replay. Returns `{ ok, deferred: true, request_id, message,
+  privacy }`. No `event_id` until the replay succeeds.
+- `400 INVALID_INPUT` — content-bearing key present at top level, or
+  invalid field value.
+
+### `POST /api/v2/meter/events/batch`
+
+Record N events in one HTTP request. Per-event failures land in
+`results` with `ok: false` — the whole request is only 4xx when the
+envelope itself is malformed.
+
+**Request Body:**
+
+```typescript
+{ events: MeterEventBody[] }         // same MeterEventBody as above
+```
+
+**Response 200:**
+
+```typescript
+{
+  ok: true,
+  accepted: number,                  // count of ok:true, deferred:false
+  deferred: number,                  // count of ok:true, deferred:true
+  rejected: number,                  // count of ok:false
+  results: Array<
+    | { ok: true, deferred: false, request_id, event_id }
+    | { ok: true, deferred: true,  request_id, message }
+    | { ok: false, request_id: string|null, error: { code, message } }
+  >,
+}
+```
+
+### `GET /api/v2/meter/events`
+
+List recent economic events for the tenant. All filters optional; `limit`
+capped at 200.
+
+Query params: `since`, `until` (ISO), `privacy_mode`, `department_id`,
+`employee_id`, `customer_id`, `feature_id`, `workflow_id`, `provider`,
+`model_used`, `action_type`, `evidence_status` (`present` | `missing`),
+`limit`.
+
+### `GET /api/v2/meter/events/:id`
+
+Fetch one event with the full privacy posture (mode, source, storage
+decisions, retention expiry).
+
+### SDK usage
+
+`@p402/sdk` 1.2.1+ exposes all four endpoints via `MeterClient`:
+
+- `p402.meter.recordEvent(input)` — single event.
+- `p402.meter.recordEventsBatch(events)` — batch call.
+- `p402.meter.listEvents(params?)`, `p402.meter.getEvent(id)`.
+- Buffered mode + retry policy: instantiate `MeterClient` directly with
+  `batch: { maxEvents, maxLatencyMs }` and `retry: { maxRetries, ... }`.
+  `enqueueEvent(input)` auto-flushes on either bound; `flush()`
+  force-flushes.
+
+Every path runs the content-key guard client-side before any fetch.
+Retries apply to network errors and 5xx with exponential backoff and
+full jitter; 429 is not retried and surfaces as `RATE_LIMITED`.
+
+---
+
+## Plans and Metering
+
+Public rate card v2, effective 2026-06-21. Source of truth:
+`lib/pricing/rate-card.ts` in the router. The CLI's `p402 plan` and the
+[pricing page](https://p402.io/pricing) both read from it.
+
+| Tier | Price | Included events / mo | Overage per 1k | Retention | Motion |
+|---|---|---|---|---|---|
+| Sandbox | Free | 25,000 | hard cap | 14 days | self-serve |
+| Build | $49 / mo | 250,000 | $0.25 | 30 days | sales-assisted |
+| Growth | $199 / mo | 1,000,000 | $0.15 | 90 days | sales-assisted |
+| Scale | $799 / mo (annual only) | 5,000,000 | $0.08 | 180 days | sales-led |
+| Enterprise | Custom | custom commit | trued up at renewal | custom | sales-led |
+
+**Metered unit.** A P402 economic event is any single AI action recorded
+in the ledger — whether routed through P402 (`/api/v2/chat/completions`)
+or metered directly (`/api/v2/meter/events` and `/batch`). Each unique
+`(tenant_id, request_id)` counts once regardless of retries; the router
+UPSERTs. Denied or blocked events are still recorded and metered so
+Governance / Control can prove enforcement.
+
+**Alerts.** In-product and email alerts fire at 50%, 80%, 100%, and 120%
+of the included allowance. Sandbox hard-caps at 100%; Build / Growth /
+Scale apply overage; Enterprise trues up at renewal.
+
+**Legacy plan vocabulary.** The billing runtime still stores plan ids
+under the legacy ladder (`free / pro / enterprise`) in
+`tenants.plan`, `billing_subscriptions.plan_id`, and Stripe metadata.
+`lib/billing/plan-compat.ts` bridges the two: `free ↔ sandbox`,
+`pro ↔ growth`, `enterprise ↔ enterprise`. `build` and `scale` are new
+canonical ids with no legacy equivalent yet; both currently reverse-map
+to `pro` for entitlement reads until the V5 plan matrix lands. Do not
+write legacy ids to new surfaces.
+
+**Bridge offers.** One-time or fixed-scope engagements orthogonal to
+the ladder: **AI Spend Audit** ($1,500 one-time),
+**Proof Sprint** ($5,000 / 2 weeks),
+**Paid Pilot** ($15,000 / 30 days),
+**Regulated Pilot** ($50,000 / 90 days).
+
+**Current-tier lookup.** The router does not yet expose a Bearer-authed
+endpoint for `GET /api/v2/billing/plan` returning
+`{ plan_id, included, used, overage_rate, retention_days }`. Until it
+does, the CLI's `p402 plan --current` prints a pointer to the dashboard.
+When the endpoint ships, the CLI will call it directly and print
+`Current plan: growth — 340k of 1M events used this month`.
 
 ---
 

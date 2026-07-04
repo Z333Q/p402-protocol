@@ -126,6 +126,9 @@ For API access, sign up at [p402.io](https://p402.io) to get your API key and ac
 | `/api/v2/analytics/spend` | GET | Spending analytics |
 | `/api/v2/analytics/recommendations` | GET | Cost optimization suggestions |
 | `/api/v2/cache/stats` | GET | Cache hit rate and savings |
+| `/api/v2/meter/events` | POST | Meter one economic event (Path B: content never leaves caller) |
+| `/api/v2/meter/events/batch` | POST | Meter N events in one request; per-event UPSERT idempotency |
+| `/api/v2/meter/events` | GET | List recent metered events (filterable) |
 | `/api/a2a` | POST | A2A JSON-RPC endpoint |
 | `/.well-known/agent.json` | GET | Agent discovery card |
 | `/api/a2a/mandates` | POST | Create AP2 spending mandate |
@@ -154,6 +157,38 @@ For machine-to-machine payments using the HTTP 402 flow: service responds with p
 ### Pattern 5: Cost Intelligence Dashboard
 
 Use `/api/v2/analytics/spend` for spending data and `/api/v2/analytics/recommendations` for optimization suggestions. The recommendations endpoint identifies cheaper model alternatives and estimates potential savings. Use `/api/v2/providers/compare` to show users real-time pricing comparisons.
+
+### Which Tier
+
+Public rate card v2, effective 2026-06-21. Every surface that displays a
+price reads from `lib/pricing/rate-card.ts` in the router (single source
+of truth). The CLI's `p402 plan` prints the same ladder.
+
+| Tier | Price | Included events / mo | Overage per 1k | Retention | Motion |
+|---|---|---|---|---|---|
+| Sandbox | Free | 25,000 | hard cap (no overage) | 14 days | self-serve |
+| Build | $49 / mo | 250,000 | $0.25 | 30 days | sales-assisted |
+| Growth | $199 / mo | 1,000,000 | $0.15 | 90 days | sales-assisted |
+| Scale | $799 / mo (annual only) | 5,000,000 | $0.08 | 180 days | sales-led |
+| Enterprise | Custom | custom commit | trued up at renewal | custom | sales-led |
+
+Bridge offers (one-time or fixed-scope, orthogonal to the ladder):
+
+- **AI Spend Audit** — $1,500 one-time, zero-deployment audit against existing telemetry (KQL exports, App Insights).
+- **Proof Sprint** — $5,000 / 2 weeks, fixed-scope non-inferiority trial on one workflow.
+- **Paid Pilot** — $15,000 / 30 days, structured evaluation with success criteria.
+- **Regulated Pilot** — $50,000 / 90 days, Route Optimization Pilot on 1–3 workflows.
+
+Sandbox is the default when a user signs up. Build and Growth become
+self-serve at Stripe Checkout when 3AY-8R billing lands; until then both
+are sales-assisted on monthly invoices. Scale and Enterprise are
+annual-only. Semantic cache, safety pack, and advanced analytics unlock
+on paid tiers. SSO and SCIM ship with Enterprise. See
+https://p402.io/pricing for the current rate card.
+
+### Pattern 6: Meter-Only Path (call providers directly, meter to P402)
+
+For applications that already call OpenAI, Anthropic, or Gemini directly but want P402's Meter / Monitor / Control / Optimize surfaces without routing traffic through P402. Post economic events to `/api/v2/meter/events` (single) or `/api/v2/meter/events/batch` (many at once). The SDK's `p402.meter.recordEvent` and `p402.meter.recordEventsBatch` enforce a content-key guard client-side so `prompt`, `response`, `messages`, `content`, `file`, `document`, `transcript`, PII/PHI/secret keys are rejected before any network call. Idempotent on `(tenant_id, request_id)` via UPSERT; safe to retry. Buffered mode and retry policy live on `MeterClient` directly. See `examples/05-meter-events/`.
 
 ## Reference Files
 

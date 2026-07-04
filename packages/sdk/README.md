@@ -129,6 +129,60 @@ if (result.deferred) {
 }
 ```
 
+### `meter.recordEventsBatch(events)` → `MeterBatchResult`
+
+Record N economic events in one HTTP request. Each event is validated
+individually — the content-key guard applies per event before any bytes
+leave the process. Per-event failures land in `results` with `ok:false`
+but do not fail the whole batch. Retries preserve every event's
+`request_id` verbatim; the router UPSERTs on `(tenant_id, request_id)`
+so a duplicated send produces the same row.
+
+```typescript
+const result = await p402.meter.recordEventsBatch([
+  { request_id: 'req_1', usage: { input_tokens: 10, cost_usd: 0.0002 } },
+  { request_id: 'req_2', usage: { input_tokens: 12, cost_usd: 0.0003 } },
+]);
+// result.accepted, result.deferred, result.rejected, result.results[]
+```
+
+### Buffered mode and retry policy (via `MeterClient` directly)
+
+`p402.meter` uses the default `MeterClient` (no buffering, retries with
+exponential backoff on network errors and 5xx). For fire-and-forget
+buffered metering or a custom retry policy, instantiate `MeterClient`
+directly. Every meter HTTP call — single, batch, list, get — retries
+with full jitter. `429` surfaces immediately as `RATE_LIMITED`. Event
+`request_id`s are preserved verbatim across retries; the router's
+`(tenant_id, request_id)` UPSERT makes duplicate sends safe.
+
+```typescript
+import { MeterClient } from '@p402/sdk';
+
+const apiKey = process.env.P402_API_KEY!;
+const meter = new MeterClient({
+  routerUrl: 'https://p402.io',
+  headers: () => ({
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${apiKey}`,
+  }),
+  log: () => {},
+
+  // Buffered mode: flush when either bound is reached.
+  batch: { maxEvents: 100, maxLatencyMs: 1000 },
+
+  // Custom retry (defaults: 3 / 200ms / 5000ms).
+  retry: { maxRetries: 5, baseDelayMs: 300, maxDelayMs: 10_000 },
+});
+
+await meter.enqueueEvent({ request_id: 'req_1', usage: { cost_usd: 0.0002 } });
+// ...many more...
+await meter.flush();  // force-flush pending, or wait for auto-flush.
+```
+
+The content-key guard fires synchronously on `enqueueEvent`, so a bad
+event throws immediately and never enters the buffer.
+
 ### `meter.listEvents(params?)` → `{ events: MeterEvent[] }`
 
 List recent economic events for the tenant. All filters optional.
