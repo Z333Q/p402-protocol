@@ -1,6 +1,6 @@
 {
   "name": "@p402/sdk",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Official TypeScript SDK for the P402 AI Payment Router — x402 protocol, multi-provider routing, session budgets, Tempo multi-rail settlement",
   "author": "P402 Protocol <dev@p402.io>",
   "license": "MIT",

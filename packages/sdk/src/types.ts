@@ -541,6 +541,66 @@ export interface MeterEventDeferredResult {
 
 export type MeterEventResult = MeterEventWriteResult | MeterEventDeferredResult;
 
+/**
+ * Per-event result in a batch response. Mirrors the two single-event
+ * shapes plus an `error` shape for the events the router rejected
+ * individually (e.g. missing request_id, content-key present). The
+ * batch as a whole is only 4xx when the request envelope itself is
+ * malformed; per-event failures ride inside `results`.
+ */
+export interface MeterBatchItemOk {
+    ok: true;
+    deferred: false;
+    request_id: string;
+    event_id: string;
+}
+export interface MeterBatchItemDeferred {
+    ok: true;
+    deferred: true;
+    request_id: string;
+    message: string;
+}
+export interface MeterBatchItemError {
+    ok: false;
+    request_id: string | null;
+    error: { code: string; message: string };
+}
+export type MeterBatchItem = MeterBatchItemOk | MeterBatchItemDeferred | MeterBatchItemError;
+
+export interface MeterBatchResult {
+    ok: true;
+    accepted: number;
+    deferred: number;
+    rejected: number;
+    results: MeterBatchItem[];
+}
+
+/**
+ * Batch-flush configuration for MeterClient. Both bounds are soft: a
+ * flush fires when either is reached. Set neither and MeterClient
+ * behaves as before (no buffering).
+ */
+export interface MeterBatchConfig {
+    /** Flush when the buffer reaches this many events. Default 100. */
+    maxEvents?: number;
+    /** Flush this many ms after the first buffered event. Default 1000. */
+    maxLatencyMs?: number;
+}
+
+/**
+ * Retry configuration for MeterClient. Applies to both single-event
+ * and batch calls. Retries fire on network errors and 5xx; 4xx is not
+ * retried (it is a caller-side or content-guard failure).
+ */
+export interface MeterRetryConfig {
+    /** Total additional attempts after the first failure. Default 3. */
+    maxRetries?: number;
+    /** First backoff delay in ms. Default 200. */
+    baseDelayMs?: number;
+    /** Upper bound on any single backoff delay. Default 5000. */
+    maxDelayMs?: number;
+}
+
 /** Row returned by listEvents / getEvent. */
 export interface MeterEvent {
     id: string;
